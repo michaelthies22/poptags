@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Allow users to read and write their own subscription status
+    match /subscription_status/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Allow customers to manage their own data
+    match /customers/{customerId} {
+      allow read, write: if isOwner(customerId);
+      
+      match /checkout_sessions/{id} {
+        allow read, write: if isOwner(customerId);
+      }
+      
+      match /subscriptions/{id} {
+        allow read: if isOwner(customerId);
+      }
+
+      match /payments/{id} {
+        allow read: if isOwner(customerId);
+      }
+    }
+
+    // Allow public access to products and prices
+    match /products/{id} {
+      allow read: if true;
+      match /prices/{id} {
+        allow read: if true;
+      }
+    }
+
+    // Allow users to track their usage
+    match /usage/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+  }
+}
